@@ -1,0 +1,114 @@
+\documentclass[a4paper,10pt]{report}
+\usepackage[utf8]{inputenc}
+\usepackage{titlesec}
+\usepackage{etoolbox}
+\usepackage{hyperref}
+\usepackage{listings}
+
+\lstset{
+basicstyle=\small\ttfamily,
+columns=flexible,
+breaklines=true
+}
+
+\makeatletter
+\patchcmd{\chapter}{\if@openright\cleardoublepage\else\clearpage\fi}{}{}{}
+\makeatother
+
+\titleformat{\chapter}{\normalfont\huge}{\thechapter.}{20pt}{\huge\bf}
+
+% Title Page
+\title{Setup Guide for a Linux Development Environment}
+\author{Nick Macey}
+
+\renewcommand{\theparagraph}{\arabic{chapter}.\arabic{paragraph}}
+\setcounter{secnumdepth}{4}
+
+\begin{document}
+\maketitle
+
+
+\chapter{Assumptions}
+\paragraph{}Libraries, and executables built manually, should be placed in a /prod directory. Access to this should be controlled, but can (and should) be a group distinct to the sudoers.
+\paragraph{} The instructions are for a Debian-like disto (Ubuntu, Mint). Broadly, they'll work for any distro, but note that anything using \verb|apt| will be different.
+\paragraph{} Assumes that an MPI-aware version of a recent GCC is installed.
+
+\chapter{LLVM}
+\paragraph{}LLVM version 11.0 onwards includes the flang (Fortran) compiler.
+\paragraph{}Unfortunately, LLVM 11.0 does not exist in any useful pre-built binary or package file.
+\paragraph{}Easiest way to build and install LLVM 11.0 is to use the following script:
+    \begin{itemize}
+     \item \url{https://www.dropbox.com/s/871l5qvebssjack/build_llvm.sh?dl=0}
+     \item Will install into /prod/bin, /prod/lib and /prod/include
+     \item Note: Building LLVM requires a recent copy of both gcc and gfortran
+    \end{itemize}
+
+\chapter{HDF5}
+\paragraph{} Pre-built binaries are only available for CentOS – not terribly helpful given that CentOS is dead…
+\paragraph{} Download source code from here:
+\begin{itemize}
+    \item \url{https://www.hdfgroup.org/downloads/hdf5/source-code/}
+    \item Ideally, you want the Cmake version (bottom of the page)
+ \end{itemize}
+\paragraph{} Modify the HDF5options.cmake configuration file (NOT the HDF5config.cmake file)
+\begin{itemize}
+    \item Switch between MPI and serial builds
+    \item Switch on Fortran build
+    \item Modify install prefix
+ \end{itemize}
+\paragraph{} Export compiler executables. E.g. for GCC:
+\begin{itemize}
+    \item \verb|export CC=gcc CXX=g++ FC=gfortran|
+ \end{itemize}
+\paragraph{} Build via cmake and make (or cmake --build)
+\paragraph{} Note that HDF5 v1.12 does not seem to work with Clang
+\paragraph{} Export \verb|HDF5_DIR| as described here: \url{https://portal.hdfgroup.org/display/support/CMake+Scripts+for+Building+Application}
+
+\chapter{SILO}
+\paragraph{} SILO is probably the most reliable mesh output format for a general Linux install, although it does suffer from a really bad Fortran API (so we’ll install NetCDF too).
+\paragraph{} If you want to use HDF5 with SILO, you’ll need an older HDF5 library (~1.10). But SILO works perfectly well with its own file format.
+\paragraph{} Download from here: https://wci.llnl.gov/simulation/computer-codes/silo and follow the build instructions in the INSTALL file.
+
+\chapter{NetCDF}
+\paragraph{} Download from here:
+\begin{itemize}
+    \item \url{https://www.unidata.ucar.edu/downloads/netcdf/}
+    \item You want both the C and Fortran libraries, and possibly the C++ one
+\end{itemize}
+\paragraph{} Build using Cmake, following these guides:
+\begin{itemize}
+    \item \url{https://www.unidata.ucar.edu/software/netcdf/docs/getting_and_building_netcdf.html#netCDF-CMake}
+    \item \url{https://www.unidata.ucar.edu/software/netcdf/docs/building_netcdf_fortran.html}
+    \item Remember to set the installation directory to /prod, not the default of /usr/local
+\end{itemize}
+
+\chapter{Module Environment}
+\paragraph{} Download from \url{https://sourceforge.net/projects/modules/files/Modules/}
+\paragraph{} Build instructions are here: \url{https://modules.readthedocs.io/en/stable/INSTALL.html}
+\begin{itemize}
+    \item You’ll need tclsh installed (\verb|sudo apt install tcl tcl-dev|)
+    \item Probably does make sense to install this into /usr/share (see example at bottom of installation guide
+    \item Make sure to follow the instructions in the Configuration section in order to have the module environment load
+\end{itemize}
+
+\chapter{AMReX}
+\paragraph{} Clone AMReX repository: \url{https://github.com/AMReX-Codes/amrex}
+\paragraph{} Create BUILD directory
+\paragraph{} Run cmake
+\begin{itemize}
+    \item 
+    \begin{lstlisting}
+cmake -DAMReX_OMP=YES -DAMReX_FORTRAN_INTERFACES=YES -DAMReX_HDF5=YES -DAMReX_SPACEDIM=2 -DCMAKE_INSTALL_PREFIX=/prod/AMReX2D_CMAKE ..
+    \end{lstlisting}
+    \item (Requires that \verb|HDF5_ROOT| be set to the root of a parallel HDF5 build)
+    \item Probably worth building a debug version too (\verb|-DCMAKE_BUILD_TYPE=Debug|), and maybe both GCC and Clang versions
+\end{itemize}
+
+
+\paragraph{} Make and install
+\begin{itemize}
+    \item \verb|make; make install|
+\end{itemize}
+
+
+\end{document}          
